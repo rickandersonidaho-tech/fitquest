@@ -1,0 +1,1860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>FitQuest Challenge</title>
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, setDoc, getDoc, collection, getDocs, onSnapshot, updateDoc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // ============================================================
+  // PASTE YOUR FIREBASE CONFIG HERE
+  // ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyDgjSC_MKjkXOWyGqUG7eG5J0_Nuz57T-8",
+  authDomain: "fitness-challenge-564f2.firebaseapp.com",
+  projectId: "fitness-challenge-564f2",
+  storageBucket: "fitness-challenge-564f2.firebasestorage.app",
+  messagingSenderId: "1731909889",
+  appId: "1:1731909889:web:bb32a36bde8ab8dcc3e300",
+  measurementId: "G-GFV9XPDE00"
+};
+  // ============================================================
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  window._db = db;
+  window._firebase = { doc, setDoc, getDoc, collection, getDocs, onSnapshot, updateDoc, deleteDoc, query, orderBy };
+  window.dispatchEvent(new Event('firebase-ready'));
+</script>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap');
+
+  :root {
+    --wii-white: #f8f8f8;
+    --wii-blue: #009ac7;
+    --wii-blue-light: #4dc8e8;
+    --wii-blue-dark: #006f9a;
+    --wii-gray: #e0e0e0;
+    --wii-gray-dark: #aaaaaa;
+    --wii-red: #e8394a;
+    --wii-green: #5cb85c;
+    --wii-orange: #f5a623;
+    --wii-purple: #9b59b6;
+    --wii-yellow: #f7d000;
+    --wii-bg: #d6eaf8;
+    --wii-channel-bg: rgba(255,255,255,0.85);
+    --shadow: 0 4px 16px rgba(0,0,0,0.13);
+    --shadow-hover: 0 8px 28px rgba(0,0,0,0.18);
+    --radius: 18px;
+    --radius-sm: 10px;
+    --font-main: 'Nunito', sans-serif;
+    --font-display: 'Fredoka One', cursive;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: var(--font-main);
+    background: linear-gradient(160deg, #c8e6f5 0%, #d6eaf8 40%, #e8f4fd 100%);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ---- LOADING SCREEN ---- */
+  #loading-screen {
+    position: fixed; inset: 0; background: var(--wii-blue);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 9999; transition: opacity 0.5s;
+  }
+  #loading-screen .logo { font-family: var(--font-display); font-size: 3rem; color: white; text-shadow: 0 4px 12px rgba(0,0,0,0.3); margin-bottom: 1rem; }
+  #loading-screen .subtitle { color: rgba(255,255,255,0.8); font-size: 1rem; margin-bottom: 2rem; }
+  .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---- PASSCODE SCREEN ---- */
+  #passcode-screen {
+    position: fixed; inset: 0;
+    background: linear-gradient(160deg, #009ac7 0%, #006f9a 100%);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 9998; padding: 2rem;
+  }
+  #passcode-screen.active { display: flex; }
+  .passcode-card {
+    background: white; border-radius: 24px; padding: 2.5rem 2rem;
+    width: 100%; max-width: 380px; text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  }
+  .passcode-logo { font-family: var(--font-display); font-size: 2.5rem; color: var(--wii-blue); margin-bottom: 0.3rem; }
+  .passcode-sub { color: var(--wii-gray-dark); font-size: 0.9rem; margin-bottom: 1.8rem; }
+  .passcode-input {
+    width: 100%; padding: 0.9rem 1.2rem; border: 2px solid var(--wii-gray);
+    border-radius: var(--radius-sm); font-size: 1.1rem; font-family: var(--font-main);
+    text-align: center; letter-spacing: 0.15em; outline: none; transition: border-color 0.2s;
+  }
+  .passcode-input:focus { border-color: var(--wii-blue); }
+  .passcode-error { color: var(--wii-red); font-size: 0.85rem; margin-top: 0.5rem; min-height: 1.2em; }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--wii-blue-light), var(--wii-blue));
+    color: white; border: none; border-radius: var(--radius-sm);
+    padding: 0.85rem 2rem; font-size: 1rem; font-family: var(--font-main);
+    font-weight: 800; cursor: pointer; width: 100%; margin-top: 1rem;
+    box-shadow: 0 4px 12px rgba(0,154,199,0.35); transition: all 0.15s;
+  }
+  .btn-primary:active { transform: scale(0.97); }
+
+  /* ---- MAIN APP ---- */
+  #app { display: none; min-height: 100vh; }
+  #app.active { display: block; }
+
+  /* ---- TOP BAR ---- */
+  .topbar {
+    background: linear-gradient(90deg, var(--wii-blue-dark), var(--wii-blue));
+    color: white; padding: 0.75rem 1rem;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.18);
+  }
+  .topbar-logo { font-family: var(--font-display); font-size: 1.5rem; letter-spacing: 0.02em; }
+  .topbar-user {
+    display: flex; align-items: center; gap: 0.5rem; cursor: pointer;
+    background: rgba(255,255,255,0.15); border-radius: 50px;
+    padding: 0.35rem 0.75rem 0.35rem 0.35rem; transition: background 0.2s;
+  }
+  .topbar-user:active { background: rgba(255,255,255,0.25); }
+  .avatar-sm { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; background: rgba(255,255,255,0.3); border: 2px solid rgba(255,255,255,0.6); }
+  .avatar-sm-placeholder { width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,0.25); border: 2px solid rgba(255,255,255,0.5); display: flex; align-items: center; justify-content: center; }
+
+  /* ---- NAV TABS ---- */
+  .nav-tabs {
+    display: flex; background: white; border-bottom: 2px solid var(--wii-gray);
+    overflow-x: auto; scrollbar-width: none; position: sticky; top: 56px; z-index: 99;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  }
+  .nav-tabs::-webkit-scrollbar { display: none; }
+  .nav-tab {
+    flex-shrink: 0; padding: 0.75rem 1.1rem; font-family: var(--font-main);
+    font-weight: 700; font-size: 0.82rem; color: var(--wii-gray-dark);
+    border: none; background: none; cursor: pointer; border-bottom: 3px solid transparent;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .nav-tab.active { color: var(--wii-blue); border-bottom-color: var(--wii-blue); }
+  .nav-tab:active { background: var(--wii-gray); }
+
+  /* ---- PAGE CONTAINER ---- */
+  .page { display: none; padding: 1rem; max-width: 900px; margin: 0 auto; }
+  .page.active { display: block; animation: fadeIn 0.25s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ---- CHANNEL CARDS (Wii style) ---- */
+  .channel-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.9rem; }
+  @media (min-width: 600px) { .channel-grid { grid-template-columns: repeat(3, 1fr); } }
+
+  .channel-card {
+    background: var(--wii-channel-bg);
+    border-radius: var(--radius); padding: 1.2rem 1rem;
+    box-shadow: var(--shadow); cursor: pointer;
+    transition: all 0.18s; border: 2px solid rgba(255,255,255,0.9);
+    text-align: center; position: relative; overflow: hidden;
+    backdrop-filter: blur(8px);
+  }
+  .channel-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0;
+    height: 40%; background: linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 100%);
+    border-radius: var(--radius) var(--radius) 0 0; pointer-events: none;
+  }
+  .channel-card:active { transform: scale(0.96); box-shadow: var(--shadow-hover); }
+  .channel-icon { font-size: 2.2rem; margin-bottom: 0.4rem; display: block; }
+  .channel-title { font-weight: 800; font-size: 0.85rem; color: #333; line-height: 1.2; }
+  .channel-sub { font-size: 0.72rem; color: var(--wii-gray-dark); margin-top: 0.2rem; }
+
+  /* ---- SECTION HEADERS ---- */
+  .section-header {
+    font-family: var(--font-display); font-size: 1.4rem; color: var(--wii-blue-dark);
+    margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;
+  }
+  .section-header .icon { font-size: 1.3rem; }
+
+  /* ---- CARDS ---- */
+  .card {
+    background: var(--wii-channel-bg); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 1.2rem; margin-bottom: 1rem;
+    border: 2px solid rgba(255,255,255,0.9); backdrop-filter: blur(8px);
+    position: relative; overflow: hidden;
+  }
+  .card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 35%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.5) 0%, transparent 100%);
+    pointer-events: none;
+  }
+  .card-title { font-weight: 800; font-size: 1rem; color: #333; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.4rem; }
+
+  /* ---- FORM ELEMENTS ---- */
+  .form-group { margin-bottom: 1rem; }
+  .form-label { display: block; font-weight: 700; font-size: 0.85rem; color: #444; margin-bottom: 0.35rem; }
+  .form-input, .form-select, .form-textarea {
+    width: 100%; padding: 0.75rem 1rem; border: 2px solid var(--wii-gray);
+    border-radius: var(--radius-sm); font-size: 0.95rem; font-family: var(--font-main);
+    outline: none; transition: border-color 0.2s; background: white;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--wii-blue); }
+  .form-textarea { resize: vertical; min-height: 80px; }
+
+  /* ---- BUTTONS ---- */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+    padding: 0.7rem 1.4rem; border-radius: var(--radius-sm); font-family: var(--font-main);
+    font-weight: 800; font-size: 0.9rem; cursor: pointer; border: none;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn-blue { background: linear-gradient(135deg, var(--wii-blue-light), var(--wii-blue)); color: white; box-shadow: 0 3px 10px rgba(0,154,199,0.3); }
+  .btn-green { background: linear-gradient(135deg, #7ed56f, var(--wii-green)); color: white; box-shadow: 0 3px 10px rgba(92,184,92,0.3); }
+  .btn-red { background: linear-gradient(135deg, #f97070, var(--wii-red)); color: white; box-shadow: 0 3px 10px rgba(232,57,74,0.3); }
+  .btn-orange { background: linear-gradient(135deg, #ffcf5c, var(--wii-orange)); color: white; box-shadow: 0 3px 10px rgba(245,166,35,0.3); }
+  .btn-purple { background: linear-gradient(135deg, #c39bd3, var(--wii-purple)); color: white; box-shadow: 0 3px 10px rgba(155,89,182,0.3); }
+  .btn-gray { background: var(--wii-gray); color: #555; }
+  .btn-sm { padding: 0.45rem 0.9rem; font-size: 0.8rem; }
+  .btn-lg { padding: 0.9rem 2rem; font-size: 1rem; }
+  .btn-full { width: 100%; }
+
+  /* ---- YES/NO TOGGLE ---- */
+  .yn-toggle { display: flex; gap: 0.5rem; }
+  .yn-btn {
+    flex: 1; padding: 0.65rem; border-radius: var(--radius-sm); border: 2px solid var(--wii-gray);
+    background: white; font-family: var(--font-main); font-weight: 800; font-size: 0.9rem;
+    cursor: pointer; transition: all 0.15s; color: #666;
+  }
+  .yn-btn.yes.active { background: var(--wii-green); border-color: var(--wii-green); color: white; }
+  .yn-btn.no.active { background: var(--wii-red); border-color: var(--wii-red); color: white; }
+
+  /* ---- LEADERBOARD ---- */
+  .leaderboard-item {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.85rem; background: white; border-radius: var(--radius-sm);
+    margin-bottom: 0.6rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: 2px solid transparent; transition: all 0.15s;
+  }
+  .leaderboard-item.rank-1 { border-color: var(--wii-yellow); background: linear-gradient(135deg, #fff9e0, white); }
+  .leaderboard-item.rank-2 { border-color: #c0c0c0; }
+  .leaderboard-item.rank-3 { border-color: #cd7f32; }
+  .rank-badge {
+    width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-weight: 900; font-size: 0.9rem; flex-shrink: 0;
+  }
+  .rank-1 .rank-badge { background: var(--wii-yellow); color: #7a5c00; }
+  .rank-2 .rank-badge { background: #c0c0c0; color: #444; }
+  .rank-3 .rank-badge { background: #cd7f32; color: white; }
+  .rank-other .rank-badge { background: var(--wii-gray); color: #666; }
+  .lb-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid var(--wii-gray); flex-shrink: 0; }
+  .lb-name { font-weight: 800; font-size: 0.95rem; color: #333; }
+  .lb-goal { font-size: 0.75rem; color: var(--wii-gray-dark); }
+  .lb-points { margin-left: auto; font-family: var(--font-display); font-size: 1.4rem; color: var(--wii-blue); }
+  .lb-points-label { font-size: 0.65rem; color: var(--wii-gray-dark); text-align: right; }
+
+  /* ---- BADGE / PILL ---- */
+  .pill {
+    display: inline-block; padding: 0.25rem 0.7rem; border-radius: 50px;
+    font-size: 0.75rem; font-weight: 700;
+  }
+  .pill-blue { background: rgba(0,154,199,0.12); color: var(--wii-blue-dark); }
+  .pill-green { background: rgba(92,184,92,0.15); color: #2e7d32; }
+  .pill-red { background: rgba(232,57,74,0.12); color: #b71c1c; }
+  .pill-orange { background: rgba(245,166,35,0.15); color: #e65100; }
+
+  /* ---- MODAL ---- */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    display: none; align-items: flex-end; justify-content: center;
+    z-index: 1000; backdrop-filter: blur(3px);
+  }
+  .modal-overlay.active { display: flex; }
+  @media (min-width: 600px) { .modal-overlay { align-items: center; } }
+  .modal-sheet {
+    background: white; border-radius: 24px 24px 0 0; width: 100%; max-width: 520px;
+    max-height: 90vh; overflow-y: auto; padding: 1.5rem;
+    animation: slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @media (min-width: 600px) { .modal-sheet { border-radius: 24px; margin: 1rem; } }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal-handle { width: 40px; height: 4px; background: var(--wii-gray); border-radius: 2px; margin: 0 auto 1.2rem; }
+  .modal-title { font-family: var(--font-display); font-size: 1.4rem; color: var(--wii-blue-dark); margin-bottom: 1rem; }
+
+  /* ---- PROGRESS BAR ---- */
+  .progress-bar-wrap { background: var(--wii-gray); border-radius: 50px; height: 10px; overflow: hidden; margin: 0.4rem 0; }
+  .progress-bar-fill { height: 100%; border-radius: 50px; transition: width 0.4s ease; background: linear-gradient(90deg, var(--wii-blue-light), var(--wii-blue)); }
+
+  /* ---- CHART ---- */
+  .chart-container { width: 100%; overflow-x: auto; }
+  canvas { max-width: 100%; }
+
+  /* ---- LOG LIST ---- */
+  .log-item {
+    display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem;
+    border-bottom: 1px solid var(--wii-gray); font-size: 0.88rem;
+  }
+  .log-item:last-child { border-bottom: none; }
+  .log-date { font-weight: 700; color: var(--wii-blue); min-width: 70px; }
+  .log-detail { color: #444; flex: 1; }
+
+  /* ---- PROFILE SWITCHER ---- */
+  .profile-grid { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .profile-chip {
+    display: flex; align-items: center; gap: 0.5rem;
+    background: white; border: 2px solid var(--wii-gray); border-radius: 50px;
+    padding: 0.4rem 0.9rem 0.4rem 0.4rem; cursor: pointer; transition: all 0.15s;
+    font-weight: 700; font-size: 0.85rem;
+  }
+  .profile-chip.active { border-color: var(--wii-blue); background: rgba(0,154,199,0.08); color: var(--wii-blue); }
+  .profile-chip img, .profile-chip .chip-avatar { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+
+  /* ---- STAT GRID ---- */
+  .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+  .stat-box {
+    background: white; border-radius: var(--radius-sm); padding: 0.9rem;
+    text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  }
+  .stat-value { font-family: var(--font-display); font-size: 1.6rem; color: var(--wii-blue); line-height: 1; }
+  .stat-label { font-size: 0.72rem; color: var(--wii-gray-dark); font-weight: 600; margin-top: 0.2rem; }
+
+  /* ---- REVEAL WINNER ---- */
+  .reveal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.92);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 2000; padding: 2rem; text-align: center;
+  }
+  .reveal-overlay.active { display: flex; animation: revealIn 0.5s ease; }
+  @keyframes revealIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+  .reveal-trophy { font-size: 5rem; margin-bottom: 1rem; animation: bounce 1s ease infinite alternate; }
+  @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-12px); } }
+  .reveal-winner-name { font-family: var(--font-display); font-size: 3rem; color: var(--wii-yellow); text-shadow: 0 0 30px rgba(247,208,0,0.6); margin-bottom: 0.5rem; }
+  .reveal-points { font-family: var(--font-display); font-size: 1.8rem; color: white; margin-bottom: 1rem; }
+  .reveal-summary { color: rgba(255,255,255,0.8); font-size: 0.9rem; max-width: 400px; line-height: 1.6; }
+  .confetti-piece { position: absolute; width: 10px; height: 10px; animation: confettiFall 3s linear infinite; }
+  @keyframes confettiFall { 0% { transform: translateY(-20px) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+
+  /* ---- OBFUSCATE ---- */
+  .obfuscated { filter: blur(6px); user-select: none; pointer-events: none; }
+
+  /* ---- DIVIDER ---- */
+  .divider { border: none; border-top: 2px solid var(--wii-gray); margin: 1rem 0; }
+
+  /* ---- AVATAR UPLOAD ---- */
+  .avatar-upload-wrap { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
+  .avatar-lg { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid var(--wii-blue); }
+  .avatar-upload-btn { position: relative; overflow: hidden; }
+  .avatar-upload-btn input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+  /* ---- STICKFIGURE SVG ---- */
+  .stickfigure { width: 90px; height: 90px; border-radius: 50%; background: var(--wii-gray); display: flex; align-items: center; justify-content: center; border: 3px solid var(--wii-blue); }
+
+  /* ---- MISC ---- */
+  .text-center { text-align: center; }
+  .mt-1 { margin-top: 0.5rem; }
+  .mt-2 { margin-top: 1rem; }
+  .mb-1 { margin-bottom: 0.5rem; }
+  .flex { display: flex; }
+  .flex-gap { gap: 0.5rem; }
+  .items-center { align-items: center; }
+  .justify-between { justify-content: space-between; }
+  .text-sm { font-size: 0.82rem; }
+  .text-gray { color: var(--wii-gray-dark); }
+  .font-bold { font-weight: 800; }
+  .hidden { display: none !important; }
+  .w-full { width: 100%; }
+
+  /* ---- BMI SECTION ---- */
+  .bmi-meter { position: relative; height: 18px; border-radius: 50px; overflow: hidden; background: linear-gradient(90deg, #4fc3f7, #81c784, #ffb74d, #e57373); margin: 0.5rem 0; }
+  .bmi-needle { position: absolute; top: -2px; bottom: -2px; width: 3px; background: #333; border-radius: 2px; transform: translateX(-50%); transition: left 0.5s ease; }
+
+  /* ---- ADMIN BADGE ---- */
+  .admin-badge { background: var(--wii-orange); color: white; font-size: 0.65rem; font-weight: 900; padding: 0.15rem 0.45rem; border-radius: 50px; }
+
+  /* ---- CHALLENGE HEADER ---- */
+  .challenge-hero {
+    background: linear-gradient(135deg, var(--wii-blue-dark), var(--wii-blue));
+    color: white; border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1rem;
+    box-shadow: var(--shadow); position: relative; overflow: hidden;
+  }
+  .challenge-hero::before {
+    content: ''; position: absolute; top: -30px; right: -30px; width: 120px; height: 120px;
+    background: rgba(255,255,255,0.08); border-radius: 50%;
+  }
+  .challenge-hero::after {
+    content: ''; position: absolute; bottom: -50px; right: 30px; width: 180px; height: 180px;
+    background: rgba(255,255,255,0.05); border-radius: 50%;
+  }
+  .challenge-name { font-family: var(--font-display); font-size: 1.6rem; margin-bottom: 0.25rem; }
+  .challenge-dates { font-size: 0.82rem; opacity: 0.85; margin-bottom: 0.75rem; }
+  .challenge-categories { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .cat-pill { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.65rem; border-radius: 50px; }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading-screen">
+  <div class="logo">🏋️ FitQuest</div>
+  <div class="subtitle">Fitness Challenge Tracker</div>
+  <div class="spinner"></div>
+</div>
+
+<!-- PASSCODE -->
+<div id="passcode-screen">
+  <div class="passcode-card">
+    <div class="passcode-logo">🏋️ FitQuest</div>
+    <div class="passcode-sub">Enter the challenge passcode to continue</div>
+    <input class="passcode-input" type="password" id="passcode-input" placeholder="••••••••••••" maxlength="30">
+    <div class="passcode-error" id="passcode-error"></div>
+    <button class="btn-primary" onclick="checkPasscode()">Enter Challenge 💪</button>
+  </div>
+</div>
+
+<!-- REVEAL OVERLAY -->
+<div class="reveal-overlay" id="reveal-overlay">
+  <div id="confetti-container"></div>
+  <div class="reveal-trophy">🏆</div>
+  <div style="color:rgba(255,255,255,0.7);font-size:1rem;margin-bottom:0.5rem;font-weight:700;">CHALLENGE WINNER</div>
+  <div class="reveal-winner-name" id="reveal-name">Champion!</div>
+  <div class="reveal-points" id="reveal-points">0 Points</div>
+  <div class="reveal-summary" id="reveal-summary"></div>
+  <button class="btn btn-gray mt-2" onclick="closeReveal()">Close</button>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-logo">🏋️ FitQuest</div>
+    <div class="topbar-user" onclick="openProfileSwitcher()">
+      <div id="topbar-avatar-wrap">
+        <div class="avatar-sm-placeholder">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><circle cx="12" cy="7" r="4"/><path d="M12 13c-5 0-8 2.5-8 4v1h16v-1c0-1.5-3-4-8-4z"/></svg>
+        </div>
+      </div>
+      <span id="topbar-name" style="font-weight:800;font-size:0.85rem;">Select Profile</span>
+      <span style="font-size:0.7rem;opacity:0.7;">▼</span>
+    </div>
+  </div>
+
+  <div class="nav-tabs" id="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('home')" data-page="home">🏠 Home</button>
+    <button class="nav-tab" onclick="showPage('log')" data-page="log">📝 Log Day</button>
+    <button class="nav-tab" onclick="showPage('leaderboard')" data-page="leaderboard">🏆 Board</button>
+    <button class="nav-tab" onclick="showPage('progress')" data-page="progress">📈 Progress</button>
+    <button class="nav-tab" onclick="showPage('history')" data-page="history">📜 History</button>
+    <button class="nav-tab" onclick="showPage('profile')" data-page="profile">👤 Profile</button>
+    <button class="nav-tab hidden" onclick="showPage('admin')" data-page="admin" id="admin-tab">⚙️ Admin</button>
+  </div>
+
+  <!-- HOME PAGE -->
+  <div class="page active" id="page-home">
+    <div id="no-challenge-banner" class="card text-center hidden">
+      <div style="font-size:3rem;margin-bottom:0.5rem;">🎯</div>
+      <div class="card-title" style="justify-content:center;">No Active Challenge</div>
+      <p class="text-sm text-gray mb-1">There's no active challenge right now. An admin can create one!</p>
+      <button class="btn btn-blue btn-sm" onclick="showPage('admin');showAdminSection('create-challenge')">Create Challenge</button>
+    </div>
+
+    <div id="challenge-banner" class="challenge-hero hidden">
+      <div class="challenge-name" id="home-challenge-name">Challenge Name</div>
+      <div class="challenge-dates" id="home-challenge-dates">Jan 1 – Jan 31</div>
+      <div class="challenge-categories" id="home-challenge-cats"></div>
+    </div>
+
+    <div id="home-join-banner" class="card hidden">
+      <div class="card-title">👋 Join the Challenge!</div>
+      <p class="text-sm text-gray mb-1">You haven't joined the active challenge yet. Set your personal goals to get started!</p>
+      <button class="btn btn-green btn-full" onclick="openJoinChallenge()">Join Challenge</button>
+    </div>
+
+    <div id="home-stats" class="hidden">
+      <div class="section-header"><span class="icon">⚡</span> Your Stats Today</div>
+      <div class="stat-grid" id="home-stat-grid"></div>
+
+      <div class="section-header mt-2"><span class="icon">📋</span> Quick Log</div>
+      <div class="channel-grid">
+        <div class="channel-card" onclick="showPage('log');switchLogTab('workout')">
+          <span class="channel-icon">🏃</span>
+          <div class="channel-title">Log Workout</div>
+        </div>
+        <div class="channel-card" onclick="showPage('log');switchLogTab('diet')">
+          <span class="channel-icon">🥗</span>
+          <div class="channel-title">Log Diet</div>
+        </div>
+        <div class="channel-card" onclick="showPage('log');switchLogTab('weight')">
+          <span class="channel-icon">⚖️</span>
+          <div class="channel-title">Log Weight</div>
+        </div>
+        <div class="channel-card" onclick="showPage('log');switchLogTab('calories')">
+          <span class="channel-icon">🔥</span>
+          <div class="channel-title">Log Calories</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="home-no-profile" class="card text-center">
+      <div style="font-size:3rem;margin-bottom:0.5rem;">👤</div>
+      <div class="card-title" style="justify-content:center;">Welcome to FitQuest!</div>
+      <p class="text-sm text-gray mb-1">Create your profile to get started with the challenge.</p>
+      <button class="btn btn-blue" onclick="showPage('profile')">Create Profile</button>
+    </div>
+  </div>
+
+  <!-- LOG DAY PAGE -->
+  <div class="page" id="page-log">
+    <div class="section-header"><span class="icon">📝</span> Log Your Day</div>
+
+    <div id="log-no-join" class="card text-center hidden">
+      <p class="text-sm text-gray">Join the active challenge first to log your days.</p>
+      <button class="btn btn-green btn-sm mt-1" onclick="openJoinChallenge()">Join Challenge</button>
+    </div>
+
+    <div id="log-content">
+      <div class="card">
+        <div class="card-title">📅 Log Date</div>
+        <div class="form-group" style="margin-bottom:0">
+          <input type="date" class="form-input" id="log-date">
+        </div>
+      </div>
+
+      <!-- LOG TABS -->
+      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.75rem;">
+        <button class="btn btn-blue btn-sm" onclick="switchLogTab('workout')" id="ltab-workout">🏃 Workout</button>
+        <button class="btn btn-gray btn-sm" onclick="switchLogTab('diet')" id="ltab-diet">🥗 Diet</button>
+        <button class="btn btn-gray btn-sm" onclick="switchLogTab('weight')" id="ltab-weight">⚖️ Weight</button>
+        <button class="btn btn-gray btn-sm" onclick="switchLogTab('calories')" id="ltab-calories">🔥 Calories</button>
+      </div>
+
+      <!-- WORKOUT LOG -->
+      <div id="log-workout" class="card">
+        <div class="card-title">🏃 Workout Logger</div>
+        <div class="form-group">
+          <label class="form-label">Exercise Type</label>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.5rem;" id="exercise-type-btns">
+            <button class="btn btn-gray btn-sm" onclick="selectExerciseType('Lift')" id="etype-Lift">🏋️ Lift</button>
+            <button class="btn btn-gray btn-sm" onclick="selectExerciseType('Run')" id="etype-Run">🏃 Run</button>
+          </div>
+          <input class="form-input" id="exercise-custom" placeholder="Or type a custom exercise..." oninput="selectExerciseType(this.value)">
+          <div id="custom-exercise-suggestions" style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.4rem;"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes (optional)</label>
+          <input class="form-input" id="workout-notes" placeholder="e.g. 5K run, chest day...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Est. Calories Burned</label>
+          <input type="number" class="form-input" id="workout-cals-burned" placeholder="e.g. 350">
+        </div>
+        <button class="btn btn-green btn-full" onclick="saveWorkout()">✅ Save Workout</button>
+      </div>
+
+      <!-- DIET LOG -->
+      <div id="log-diet" class="card hidden">
+        <div class="card-title">🥗 Diet Goal</div>
+        <div class="form-group">
+          <label class="form-label">Did you meet your diet goal today?</label>
+          <p class="text-sm text-gray mb-1" id="user-diet-goal-display"></p>
+          <div class="yn-toggle">
+            <button class="yn-btn yes" id="diet-yes" onclick="setDietYN(true)">✅ Yes</button>
+            <button class="yn-btn no" id="diet-no" onclick="setDietYN(false)">❌ No</button>
+          </div>
+        </div>
+        <button class="btn btn-green btn-full mt-1" onclick="saveDiet()">✅ Save Diet Log</button>
+      </div>
+
+      <!-- WEIGHT LOG -->
+      <div id="log-weight" class="card hidden">
+        <div class="card-title">⚖️ Weight Log</div>
+        <div class="form-group">
+          <label class="form-label">Your Weight (lbs)</label>
+          <input type="number" class="form-input" id="weight-input" placeholder="e.g. 215.5" step="0.1">
+        </div>
+        <div id="bmi-section" class="form-group hidden">
+          <label class="form-label">BMI Calculator</label>
+          <div class="form-group">
+            <label class="form-label">Height</label>
+            <div style="display:flex;gap:0.5rem;">
+              <input type="number" class="form-input" id="height-ft" placeholder="ft" style="width:80px;" oninput="calcBMI()">
+              <input type="number" class="form-input" id="height-in" placeholder="in" style="width:80px;" oninput="calcBMI()">
+            </div>
+          </div>
+          <div class="bmi-meter"><div class="bmi-needle" id="bmi-needle"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:0.7rem;color:#888;margin-top:0.2rem;">
+            <span>Underweight</span><span>Normal</span><span>Overweight</span><span>Obese</span>
+          </div>
+          <div style="text-align:center;margin-top:0.4rem;" id="bmi-result"></div>
+        </div>
+        <button class="btn btn-green btn-full" onclick="saveWeight()">✅ Save Weight</button>
+      </div>
+
+      <!-- CALORIES LOG -->
+      <div id="log-calories" class="card hidden">
+        <div class="card-title">🔥 Calories Log</div>
+        <div class="form-group">
+          <label class="form-label">Calories Consumed</label>
+          <input type="number" class="form-input" id="cals-consumed" placeholder="e.g. 1800">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Calories Burned (exercise)</label>
+          <input type="number" class="form-input" id="cals-burned" placeholder="e.g. 300">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Drank enough water today?</label>
+          <div class="yn-toggle">
+            <button class="yn-btn yes" id="water-yes" onclick="setWaterYN(true)">💧 Yes</button>
+            <button class="yn-btn no" id="water-no" onclick="setWaterYN(false)">🚫 No</button>
+          </div>
+        </div>
+        <button class="btn btn-green btn-full mt-1" onclick="saveCalories()">✅ Save Calories</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD PAGE -->
+  <div class="page" id="page-leaderboard">
+    <div class="section-header"><span class="icon">🏆</span> Leaderboard</div>
+
+    <div id="lb-obfuscated-banner" class="card hidden" style="background:linear-gradient(135deg,#fff3e0,#ffe0b2);border-color:var(--wii-orange);">
+      <div class="card-title" style="color:var(--wii-orange);">🔒 Final Week Locked</div>
+      <p class="text-sm" style="color:#e65100;">The last 7 days of the challenge are hidden until the admin reveals the winner. The suspense is real! 🏆</p>
+    </div>
+
+    <div id="lb-reveal-btn-wrap" class="hidden text-center mb-1">
+      <button class="btn btn-orange btn-lg btn-full" onclick="triggerReveal()" style="font-size:1.1rem;">🏆 REVEAL THE WINNER! 🏆</button>
+    </div>
+
+    <div id="leaderboard-list"></div>
+
+    <div class="section-header mt-2"><span class="icon">📊</span> Progress Chart</div>
+    <div class="card">
+      <div id="chart-toggle-btns" style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.75rem;"></div>
+      <div class="chart-container">
+        <canvas id="progress-chart" height="220"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROGRESS PAGE -->
+  <div class="page" id="page-progress">
+    <div class="section-header"><span class="icon">📈</span> My Progress</div>
+    <div id="progress-no-join" class="card text-center hidden">
+      <p class="text-sm text-gray">Join the active challenge to track your progress.</p>
+    </div>
+    <div id="progress-content">
+      <div class="stat-grid" id="progress-stat-grid"></div>
+
+      <div class="card mt-2">
+        <div class="card-title">⚖️ Weight History</div>
+        <div class="chart-container">
+          <canvas id="weight-chart" height="180"></canvas>
+        </div>
+        <div id="weight-history-list" style="max-height:200px;overflow-y:auto;margin-top:0.5rem;"></div>
+      </div>
+
+      <div class="card mt-2">
+        <div class="card-title">🏃 Workout History</div>
+        <div id="workout-history-list" style="max-height:250px;overflow-y:auto;"></div>
+      </div>
+
+      <div class="card mt-2">
+        <div class="card-title">📅 Weekly Summary</div>
+        <div id="weekly-summary"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY PAGE -->
+  <div class="page" id="page-history">
+    <div class="section-header"><span class="icon">📜</span> Challenge Archive</div>
+    <div id="archive-list" class="card text-center">
+      <p class="text-sm text-gray">No archived challenges yet. Completed challenges will appear here.</p>
+    </div>
+  </div>
+
+  <!-- PROFILE PAGE -->
+  <div class="page" id="page-profile">
+    <div class="section-header"><span class="icon">👤</span> Profile</div>
+
+    <div id="profile-list-section">
+      <div class="card">
+        <div class="card-title">All Profiles</div>
+        <div id="all-profiles-list"></div>
+        <button class="btn btn-blue btn-full mt-1" onclick="openCreateProfile()">+ Create New Profile</button>
+      </div>
+    </div>
+
+    <div id="my-profile-section" class="hidden">
+      <div class="card text-center">
+        <div class="avatar-upload-wrap">
+          <div id="profile-avatar-display"></div>
+          <div style="font-size:0.8rem;color:var(--wii-gray-dark);">Tap to change photo</div>
+          <label class="btn btn-gray btn-sm avatar-upload-btn">
+            📷 Upload Photo
+            <input type="file" accept="image/*" onchange="handleAvatarUpload(event)">
+          </label>
+        </div>
+        <div style="margin-top:1rem;">
+          <div style="font-family:var(--font-display);font-size:1.6rem;color:var(--wii-blue-dark);" id="profile-name-display"></div>
+          <div id="profile-admin-badge" class="hidden" style="margin-top:0.3rem;"><span class="admin-badge">⚙️ ADMIN</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📊 BMI Tracker</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
+          <span class="text-sm">Enable BMI tracking</span>
+          <label style="position:relative;display:inline-block;width:44px;height:24px;">
+            <input type="checkbox" id="bmi-toggle" onchange="toggleBMI(this.checked)" style="opacity:0;width:0;height:0;">
+            <span id="bmi-toggle-visual" style="position:absolute;inset:0;background:var(--wii-gray);border-radius:50px;cursor:pointer;transition:0.2s;"></span>
+            <span id="bmi-toggle-dot" style="position:absolute;left:2px;top:2px;width:20px;height:20px;background:white;border-radius:50%;transition:0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.2);"></span>
+          </label>
+        </div>
+        <div id="bmi-profile-display" class="hidden">
+          <div class="form-group">
+            <label class="form-label">Height</label>
+            <div style="display:flex;gap:0.5rem;">
+              <input type="number" class="form-input" id="profile-height-ft" placeholder="ft" style="width:80px;">
+              <input type="number" class="form-input" id="profile-height-in" placeholder="in" style="width:80px;">
+            </div>
+          </div>
+          <button class="btn btn-blue btn-sm" onclick="saveHeight()">Save Height</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">⚙️ Edit Profile</div>
+        <div class="form-group">
+          <label class="form-label">Display Name</label>
+          <input type="text" class="form-input" id="edit-name" placeholder="Your name">
+        </div>
+        <button class="btn btn-blue btn-full" onclick="saveProfile()">💾 Save Profile</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN PAGE -->
+  <div class="page" id="page-admin">
+    <div class="section-header"><span class="icon">⚙️</span> Admin Panel</div>
+
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem;">
+      <button class="btn btn-blue btn-sm" onclick="showAdminSection('create-challenge')">+ New Challenge</button>
+      <button class="btn btn-gray btn-sm" onclick="showAdminSection('manage-challenge')">Manage Active</button>
+      <button class="btn btn-gray btn-sm" onclick="showAdminSection('visibility')">Visibility</button>
+    </div>
+
+    <!-- CREATE CHALLENGE -->
+    <div id="admin-create-challenge" class="card hidden">
+      <div class="card-title">🎯 Create New Challenge</div>
+      <div class="form-group">
+        <label class="form-label">Challenge Name</label>
+        <input type="text" class="form-input" id="ch-name" placeholder="e.g. January Fitness Challenge">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Start Date</label>
+        <input type="date" class="form-input" id="ch-start">
+      </div>
+      <div class="form-group">
+        <label class="form-label">End Date</label>
+        <input type="date" class="form-input" id="ch-end">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Max Participants</label>
+        <input type="number" class="form-input" id="ch-max" value="4" min="1" max="10">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Point Categories (1–3)</label>
+        <div id="cat-list">
+          <div class="flex flex-gap items-center mb-1">
+            <input type="text" class="form-input" placeholder="Category name e.g. Diet Goal" id="cat-0">
+            <input type="number" class="form-input" placeholder="Pts" style="width:65px;" id="catpts-0" value="1">
+          </div>
+        </div>
+        <button class="btn btn-gray btn-sm mt-1" onclick="addCategory()" id="add-cat-btn">+ Add Category</button>
+        <div class="text-sm text-gray mt-1">Point value = per-day for daily goals, or per-unit for pounds lost.</div>
+      </div>
+      <button class="btn btn-green btn-full mt-1" onclick="createChallenge()">🚀 Launch Challenge</button>
+    </div>
+
+    <!-- MANAGE CHALLENGE -->
+    <div id="admin-manage-challenge" class="card hidden">
+      <div class="card-title">⚙️ Manage Active Challenge</div>
+      <div id="manage-challenge-content">
+        <p class="text-sm text-gray">No active challenge.</p>
+      </div>
+    </div>
+
+    <!-- VISIBILITY -->
+    <div id="admin-visibility" class="card hidden">
+      <div class="card-title">👁️ Leaderboard Visibility</div>
+      <div class="form-group">
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-sm font-bold">Obfuscate final week (default ON)</span>
+          <label style="position:relative;display:inline-block;width:44px;height:24px;">
+            <input type="checkbox" id="obfuscate-toggle" onchange="saveVisibility()" style="opacity:0;width:0;height:0;" checked>
+            <span id="obf-toggle-vis" style="position:absolute;inset:0;background:var(--wii-blue);border-radius:50px;cursor:pointer;transition:0.2s;"></span>
+            <span id="obf-toggle-dot" style="position:absolute;left:22px;top:2px;width:20px;height:20px;background:white;border-radius:50%;transition:0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.2);"></span>
+          </label>
+        </div>
+        <div id="visibility-cats"></div>
+      </div>
+      <button class="btn btn-blue btn-sm" onclick="saveVisibility()">💾 Save Visibility Settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Profile Switcher -->
+<div class="modal-overlay" id="modal-profile-switcher">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Switch Profile</div>
+    <div id="switcher-profiles"></div>
+    <button class="btn btn-gray btn-full mt-1" onclick="closeModal('modal-profile-switcher')">Cancel</button>
+  </div>
+</div>
+
+<!-- MODAL: Create Profile -->
+<div class="modal-overlay" id="modal-create-profile">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Create Profile</div>
+    <div class="form-group">
+      <label class="form-label">Your Name</label>
+      <input type="text" class="form-input" id="new-profile-name" placeholder="e.g. Mike">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Are you the admin?</label>
+      <div class="yn-toggle">
+        <button class="yn-btn yes" id="new-is-admin-yes" onclick="setNewProfileAdmin(true)">✅ Yes</button>
+        <button class="yn-btn no active" id="new-is-admin-no" onclick="setNewProfileAdmin(false)">❌ No</button>
+      </div>
+      <p class="text-sm text-gray mt-1">Only one admin is needed per challenge group.</p>
+    </div>
+    <button class="btn btn-blue btn-full" onclick="createProfile()">Create Profile</button>
+    <button class="btn btn-gray btn-full mt-1" onclick="closeModal('modal-create-profile')">Cancel</button>
+  </div>
+</div>
+
+<!-- MODAL: Join Challenge -->
+<div class="modal-overlay" id="modal-join-challenge">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🎯 Join the Challenge!</div>
+    <p class="text-sm text-gray mb-1">Set your personal goals for each category. Everyone can see these!</p>
+    <div id="join-goals-form"></div>
+    <div class="form-group">
+      <label class="form-label">Starting Weight (lbs)</label>
+      <input type="number" class="form-input" id="join-start-weight" placeholder="e.g. 215">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Goal Weight (lbs)</label>
+      <input type="number" class="form-input" id="join-goal-weight" placeholder="e.g. 200">
+    </div>
+    <button class="btn btn-green btn-full mt-1" onclick="joinChallenge()">🚀 Join Challenge!</button>
+    <button class="btn btn-gray btn-full mt-1" onclick="closeModal('modal-join-challenge')">Cancel</button>
+  </div>
+</div>
+
+<!-- CHART.JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+const PASSCODE = "Jesus1sK00L";
+let db, firebase;
+let currentProfile = null; // { id, name, isAdmin, avatar, ... }
+let allProfiles = {};
+let activeChallenge = null;
+let challengeParticipants = {}; // uid -> participant data
+let allLogs = {}; // uid -> logs
+let visibility = { obfuscateFinalWeek: true, showWeight: true, showCalories: true, showWorkouts: true, showBMI: false };
+let selectedExerciseType = '';
+let dietYN = null;
+let waterYN = null;
+let newProfileIsAdmin = false;
+let catCount = 1;
+let progressChartInst = null;
+let weightChartInst = null;
+let chartToggles = {};
+let customExercises = [];
+
+// ============================================================
+// INIT
+// ============================================================
+window.addEventListener('firebase-ready', async () => {
+  db = window._db;
+  firebase = window._firebase;
+  const passed = sessionStorage.getItem('fq_auth') === '1';
+  document.getElementById('loading-screen').style.opacity = '0';
+  setTimeout(() => {
+    document.getElementById('loading-screen').style.display = 'none';
+    if (passed) { initApp(); }
+    else { document.getElementById('passcode-screen').classList.add('active'); }
+  }, 500);
+});
+
+function checkPasscode() {
+  const val = document.getElementById('passcode-input').value;
+  if (val === PASSCODE) {
+    sessionStorage.setItem('fq_auth', '1');
+    document.getElementById('passcode-screen').classList.remove('active');
+    initApp();
+  } else {
+    document.getElementById('passcode-error').textContent = 'Incorrect passcode. Try again!';
+    document.getElementById('passcode-input').value = '';
+  }
+}
+
+document.getElementById('passcode-input').addEventListener('keydown', e => { if (e.key === 'Enter') checkPasscode(); });
+
+async function initApp() {
+  document.getElementById('app').classList.add('active');
+  await loadAllData();
+  const saved = localStorage.getItem('fq_profile');
+  if (saved && allProfiles[saved]) { setCurrentProfile(saved); }
+  setupRealtimeListeners();
+  setTodayDate();
+  renderHome();
+}
+
+// ============================================================
+// DATA LOADING
+// ============================================================
+async function loadAllData() {
+  const { collection, getDocs, doc, getDoc } = firebase;
+  // Profiles
+  const pSnap = await getDocs(collection(db, 'profiles'));
+  allProfiles = {};
+  pSnap.forEach(d => { allProfiles[d.id] = d.data(); });
+
+  // Active challenge
+  const acSnap = await getDoc(doc(db, 'meta', 'activeChallenge'));
+  activeChallenge = acSnap.exists() ? acSnap.data() : null;
+
+  // Participants
+  if (activeChallenge) {
+    const parSnap = await getDocs(collection(db, 'challenges', activeChallenge.id, 'participants'));
+    challengeParticipants = {};
+    parSnap.forEach(d => { challengeParticipants[d.id] = d.data(); });
+
+    // Logs
+    allLogs = {};
+    for (const uid of Object.keys(challengeParticipants)) {
+      const logSnap = await getDocs(collection(db, 'challenges', activeChallenge.id, 'logs', uid, 'entries'));
+      allLogs[uid] = {};
+      logSnap.forEach(d => { allLogs[uid][d.id] = d.data(); });
+    }
+  }
+
+  // Visibility
+  const visSnap = await getDoc(doc(db, 'meta', 'visibility'));
+  if (visSnap.exists()) visibility = { ...visibility, ...visSnap.data() };
+
+  // Custom exercises
+  const exSnap = await getDoc(doc(db, 'meta', 'customExercises'));
+  if (exSnap.exists()) customExercises = exSnap.data().list || [];
+}
+
+function setupRealtimeListeners() {
+  if (!activeChallenge) return;
+  const { collection, onSnapshot } = firebase;
+  onSnapshot(collection(db, 'profiles'), snap => {
+    allProfiles = {};
+    snap.forEach(d => { allProfiles[d.id] = d.data(); });
+    renderCurrentPage();
+  });
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+let currentPage = 'home';
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelector(`[data-page="${page}"]`)?.classList.add('active');
+  currentPage = page;
+  renderCurrentPage();
+}
+
+function renderCurrentPage() {
+  if (currentPage === 'home') renderHome();
+  else if (currentPage === 'leaderboard') renderLeaderboard();
+  else if (currentPage === 'progress') renderProgress();
+  else if (currentPage === 'profile') renderProfilePage();
+  else if (currentPage === 'history') renderHistory();
+  else if (currentPage === 'admin') renderAdmin();
+}
+
+// ============================================================
+// PROFILE
+// ============================================================
+function setCurrentProfile(id) {
+  currentProfile = { id, ...allProfiles[id] };
+  localStorage.setItem('fq_profile', id);
+  updateTopbar();
+  if (currentProfile.isAdmin) document.getElementById('admin-tab').classList.remove('hidden');
+  else document.getElementById('admin-tab').classList.add('hidden');
+  renderCurrentPage();
+}
+
+function updateTopbar() {
+  if (!currentProfile) return;
+  document.getElementById('topbar-name').textContent = currentProfile.name || 'Profile';
+  const wrap = document.getElementById('topbar-avatar-wrap');
+  if (currentProfile.avatar) {
+    wrap.innerHTML = `<img src="${currentProfile.avatar}" class="avatar-sm">`;
+  } else {
+    wrap.innerHTML = `<div class="avatar-sm-placeholder">${stickFigureSVG(18)}</div>`;
+  }
+}
+
+function openProfileSwitcher() { renderSwitcher(); openModal('modal-profile-switcher'); }
+
+function renderSwitcher() {
+  const cont = document.getElementById('switcher-profiles');
+  cont.innerHTML = '';
+  Object.entries(allProfiles).forEach(([id, p]) => {
+    const div = document.createElement('div');
+    div.className = 'leaderboard-item';
+    div.style.cursor = 'pointer';
+    div.onclick = () => { setCurrentProfile(id); closeModal('modal-profile-switcher'); renderCurrentPage(); };
+    const avatar = p.avatar ? `<img src="${p.avatar}" class="lb-avatar">` : `<div class="lb-avatar" style="background:var(--wii-gray);display:flex;align-items:center;justify-content:center;">${stickFigureSVG(24)}</div>`;
+    div.innerHTML = `${avatar}<div><div class="lb-name">${p.name}${p.isAdmin ? ' <span class="admin-badge">ADMIN</span>' : ''}</div></div>${currentProfile?.id === id ? '<span style="margin-left:auto;color:var(--wii-blue);">✓</span>' : ''}`;
+    cont.appendChild(div);
+  });
+}
+
+function openCreateProfile() { newProfileIsAdmin = false; updateNewAdminBtns(); openModal('modal-create-profile'); }
+
+function setNewProfileAdmin(v) { newProfileIsAdmin = v; updateNewAdminBtns(); }
+function updateNewAdminBtns() {
+  document.getElementById('new-is-admin-yes').classList.toggle('active', newProfileIsAdmin);
+  document.getElementById('new-is-admin-no').classList.toggle('active', !newProfileIsAdmin);
+}
+
+async function createProfile() {
+  const name = document.getElementById('new-profile-name').value.trim();
+  if (!name) return alert('Please enter a name.');
+  const { doc, setDoc } = firebase;
+  const id = 'p_' + Date.now();
+  const data = { name, isAdmin: newProfileIsAdmin, avatar: null, bmiEnabled: false, heightFt: null, heightIn: null, createdAt: Date.now() };
+  await setDoc(doc(db, 'profiles', id), data);
+  allProfiles[id] = data;
+  closeModal('modal-create-profile');
+  document.getElementById('new-profile-name').value = '';
+  setCurrentProfile(id);
+  showPage('profile');
+}
+
+async function saveProfile() {
+  if (!currentProfile) return;
+  const name = document.getElementById('edit-name').value.trim();
+  if (!name) return alert('Please enter a name.');
+  const { doc, updateDoc } = firebase;
+  await updateDoc(doc(db, 'profiles', currentProfile.id), { name });
+  allProfiles[currentProfile.id].name = name;
+  currentProfile.name = name;
+  updateTopbar();
+  alert('Profile saved!');
+}
+
+async function handleAvatarUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    const data = ev.target.result;
+    const { doc, updateDoc } = firebase;
+    await updateDoc(doc(db, 'profiles', currentProfile.id), { avatar: data });
+    allProfiles[currentProfile.id].avatar = data;
+    currentProfile.avatar = data;
+    updateTopbar();
+    renderProfilePage();
+  };
+  reader.readAsDataURL(file);
+}
+
+async function toggleBMI(v) {
+  if (!currentProfile) return;
+  const { doc, updateDoc } = firebase;
+  await updateDoc(doc(db, 'profiles', currentProfile.id), { bmiEnabled: v });
+  allProfiles[currentProfile.id].bmiEnabled = v;
+  currentProfile.bmiEnabled = v;
+  document.getElementById('bmi-profile-display').classList.toggle('hidden', !v);
+  document.getElementById('bmi-section').classList.toggle('hidden', !v);
+  updateBMIToggleVisual(v);
+}
+
+async function saveHeight() {
+  if (!currentProfile) return;
+  const ft = parseFloat(document.getElementById('profile-height-ft').value) || 0;
+  const inch = parseFloat(document.getElementById('profile-height-in').value) || 0;
+  const { doc, updateDoc } = firebase;
+  await updateDoc(doc(db, 'profiles', currentProfile.id), { heightFt: ft, heightIn: inch });
+  allProfiles[currentProfile.id].heightFt = ft;
+  allProfiles[currentProfile.id].heightIn = inch;
+  currentProfile.heightFt = ft; currentProfile.heightIn = inch;
+  alert('Height saved!');
+}
+
+function updateBMIToggleVisual(v) {
+  const vis = document.getElementById('bmi-toggle-visual');
+  const dot = document.getElementById('bmi-toggle-dot');
+  if (vis) { vis.style.background = v ? 'var(--wii-blue)' : 'var(--wii-gray)'; }
+  if (dot) { dot.style.left = v ? '22px' : '2px'; }
+}
+
+function renderProfilePage() {
+  if (!currentProfile) {
+    document.getElementById('profile-list-section').classList.remove('hidden');
+    document.getElementById('my-profile-section').classList.add('hidden');
+  } else {
+    document.getElementById('profile-list-section').classList.remove('hidden');
+    document.getElementById('my-profile-section').classList.remove('hidden');
+
+    const p = allProfiles[currentProfile.id] || currentProfile;
+    document.getElementById('profile-name-display').textContent = p.name;
+    document.getElementById('profile-admin-badge').classList.toggle('hidden', !p.isAdmin);
+    document.getElementById('edit-name').value = p.name;
+
+    const avatarDisp = document.getElementById('profile-avatar-display');
+    if (p.avatar) avatarDisp.innerHTML = `<img src="${p.avatar}" class="avatar-lg">`;
+    else avatarDisp.innerHTML = `<div class="stickfigure">${stickFigureSVG(50)}</div>`;
+
+    const bmiOn = p.bmiEnabled || false;
+    document.getElementById('bmi-toggle').checked = bmiOn;
+    updateBMIToggleVisual(bmiOn);
+    document.getElementById('bmi-profile-display').classList.toggle('hidden', !bmiOn);
+    document.getElementById('bmi-section').classList.toggle('hidden', !bmiOn);
+    if (p.heightFt) document.getElementById('profile-height-ft').value = p.heightFt;
+    if (p.heightIn) document.getElementById('profile-height-in').value = p.heightIn;
+  }
+
+  // All profiles list
+  const list = document.getElementById('all-profiles-list');
+  list.innerHTML = '';
+  Object.entries(allProfiles).forEach(([id, p]) => {
+    const div = document.createElement('div');
+    div.className = 'leaderboard-item';
+    div.style.cursor = 'pointer';
+    div.onclick = () => setCurrentProfile(id);
+    const avatar = p.avatar ? `<img src="${p.avatar}" class="lb-avatar">` : `<div class="lb-avatar" style="background:var(--wii-gray);display:flex;align-items:center;justify-content:center;">${stickFigureSVG(24)}</div>`;
+    div.innerHTML = `${avatar}<div><div class="lb-name">${p.name}${p.isAdmin ? ' <span class="admin-badge">ADMIN</span>' : ''}</div></div>${currentProfile?.id === id ? '<span style="margin-left:auto;color:var(--wii-blue);">✓ Active</span>' : ''}`;
+    list.appendChild(div);
+  });
+}
+
+// ============================================================
+// HOME
+// ============================================================
+function renderHome() {
+  const hasProfile = !!currentProfile;
+  document.getElementById('home-no-profile').classList.toggle('hidden', hasProfile);
+
+  if (!hasProfile) { document.getElementById('challenge-banner').classList.add('hidden'); document.getElementById('home-stats').classList.add('hidden'); return; }
+
+  if (!activeChallenge) {
+    document.getElementById('no-challenge-banner').classList.remove('hidden');
+    document.getElementById('challenge-banner').classList.add('hidden');
+    document.getElementById('home-join-banner').classList.add('hidden');
+    document.getElementById('home-stats').classList.add('hidden');
+    return;
+  }
+
+  document.getElementById('no-challenge-banner').classList.add('hidden');
+  document.getElementById('challenge-banner').classList.remove('hidden');
+  document.getElementById('home-challenge-name').textContent = activeChallenge.name;
+  document.getElementById('home-challenge-dates').textContent = `${fmtDate(activeChallenge.startDate)} – ${fmtDate(activeChallenge.endDate)}`;
+  const cats = document.getElementById('home-challenge-cats');
+  cats.innerHTML = (activeChallenge.categories || []).map(c => `<span class="cat-pill">${c.name} (${c.points}pt)</span>`).join('');
+
+  const joined = challengeParticipants[currentProfile.id];
+  document.getElementById('home-join-banner').classList.toggle('hidden', !!joined);
+  document.getElementById('home-stats').classList.toggle('hidden', !joined);
+
+  if (joined) {
+    const today = getTodayStr();
+    const logs = allLogs[currentProfile.id] || {};
+    const todayLog = logs[today] || {};
+    const pts = calcPoints(currentProfile.id);
+    const startW = joined.startingWeight || 0;
+    const latestW = getLatestWeight(currentProfile.id);
+    const lbsLost = startW && latestW ? +(startW - latestW).toFixed(1) : 0;
+
+    document.getElementById('home-stat-grid').innerHTML = `
+      <div class="stat-box"><div class="stat-value">${pts}</div><div class="stat-label">Total Points</div></div>
+      <div class="stat-box"><div class="stat-value">${lbsLost >= 0 ? lbsLost : 0}</div><div class="stat-label">Lbs Lost</div></div>
+      <div class="stat-box"><div class="stat-value">${todayLog.workoutLogged ? '✅' : '—'}</div><div class="stat-label">Workout Today</div></div>
+      <div class="stat-box"><div class="stat-value">${todayLog.dietMet === true ? '✅' : todayLog.dietMet === false ? '❌' : '—'}</div><div class="stat-label">Diet Today</div></div>
+    `;
+  }
+}
+
+// ============================================================
+// CHALLENGE
+// ============================================================
+function openJoinChallenge() {
+  if (!activeChallenge || !currentProfile) return;
+  const form = document.getElementById('join-goals-form');
+  form.innerHTML = '';
+  (activeChallenge.categories || []).forEach((cat, i) => {
+    form.innerHTML += `<div class="form-group"><label class="form-label">${cat.name} — Your Personal Goal</label><input type="text" class="form-input" id="join-goal-${i}" placeholder="e.g. Paleo diet, Run 3x/week..."></div>`;
+  });
+  openModal('modal-join-challenge');
+}
+
+async function joinChallenge() {
+  if (!currentProfile || !activeChallenge) return;
+  const { doc, setDoc } = firebase;
+  const goals = {};
+  (activeChallenge.categories || []).forEach((cat, i) => {
+    goals[cat.name] = document.getElementById(`join-goal-${i}`)?.value.trim() || '';
+  });
+  const sw = parseFloat(document.getElementById('join-start-weight').value) || 0;
+  const gw = parseFloat(document.getElementById('join-goal-weight').value) || 0;
+  const data = { uid: currentProfile.id, name: currentProfile.name, goals, startingWeight: sw, goalWeight: gw, joinedAt: Date.now() };
+  await setDoc(doc(db, 'challenges', activeChallenge.id, 'participants', currentProfile.id), data);
+  challengeParticipants[currentProfile.id] = data;
+  if (!allLogs[currentProfile.id]) allLogs[currentProfile.id] = {};
+  closeModal('modal-join-challenge');
+  renderHome();
+}
+
+async function createChallenge() {
+  if (!currentProfile?.isAdmin) return;
+  const { doc, setDoc } = firebase;
+  const name = document.getElementById('ch-name').value.trim();
+  const start = document.getElementById('ch-start').value;
+  const end = document.getElementById('ch-end').value;
+  const maxP = parseInt(document.getElementById('ch-max').value) || 4;
+  if (!name || !start || !end) return alert('Please fill all fields.');
+
+  const cats = [];
+  for (let i = 0; i < catCount; i++) {
+    const n = document.getElementById(`cat-${i}`)?.value.trim();
+    const p = parseFloat(document.getElementById(`catpts-${i}`)?.value) || 1;
+    if (n) cats.push({ name: n, points: p });
+  }
+  if (cats.length === 0) return alert('Add at least one point category.');
+
+  const id = 'ch_' + Date.now();
+  const data = { id, name, startDate: start, endDate: end, maxParticipants: maxP, categories: cats, createdBy: currentProfile.id, createdAt: Date.now() };
+  await setDoc(doc(db, 'challenges', id), data);
+  await setDoc(doc(db, 'meta', 'activeChallenge'), data);
+  activeChallenge = data;
+  challengeParticipants = {};
+  allLogs = {};
+  alert(`Challenge "${name}" created! 🎉`);
+  showPage('home');
+}
+
+function addCategory() {
+  if (catCount >= 3) return;
+  const list = document.getElementById('cat-list');
+  const div = document.createElement('div');
+  div.className = 'flex flex-gap items-center mb-1';
+  div.innerHTML = `<input type="text" class="form-input" placeholder="Category name" id="cat-${catCount}"><input type="number" class="form-input" placeholder="Pts" style="width:65px;" id="catpts-${catCount}" value="1">`;
+  list.appendChild(div);
+  catCount++;
+  if (catCount >= 3) document.getElementById('add-cat-btn').classList.add('hidden');
+}
+
+function showAdminSection(sec) {
+  ['create-challenge','manage-challenge','visibility'].forEach(s => {
+    document.getElementById('admin-' + s).classList.add('hidden');
+  });
+  document.getElementById('admin-' + sec).classList.remove('hidden');
+  if (sec === 'manage-challenge') renderManageChallenge();
+  if (sec === 'visibility') renderVisibilityAdmin();
+}
+
+function renderManageChallenge() {
+  const cont = document.getElementById('manage-challenge-content');
+  if (!activeChallenge) { cont.innerHTML = '<p class="text-sm text-gray">No active challenge.</p>'; return; }
+  const today = new Date().toISOString().split('T')[0];
+  const ended = today > activeChallenge.endDate;
+  cont.innerHTML = `
+    <div class="font-bold mb-1">${activeChallenge.name}</div>
+    <div class="text-sm text-gray mb-1">${fmtDate(activeChallenge.startDate)} – ${fmtDate(activeChallenge.endDate)}</div>
+    <div class="text-sm mb-1">Participants: ${Object.keys(challengeParticipants).length}/${activeChallenge.maxParticipants}</div>
+    ${ended ? `<button class="btn btn-orange btn-full mt-1" onclick="triggerReveal()">🏆 REVEAL THE WINNER!</button>` : ''}
+    <button class="btn btn-red btn-sm mt-1" onclick="archiveChallenge()">📦 Archive & End Challenge</button>
+  `;
+}
+
+async function archiveChallenge() {
+  if (!activeChallenge || !currentProfile?.isAdmin) return;
+  if (!confirm('Archive this challenge? It will move to history.')) return;
+  const { doc, setDoc, deleteDoc } = firebase;
+  await setDoc(doc(db, 'archive', activeChallenge.id), { ...activeChallenge, archivedAt: Date.now(), participants: challengeParticipants });
+  await deleteDoc(doc(db, 'meta', 'activeChallenge'));
+  activeChallenge = null;
+  challengeParticipants = {};
+  allLogs = {};
+  alert('Challenge archived!');
+  showPage('home');
+}
+
+function renderVisibilityAdmin() {
+  if (!activeChallenge) return;
+  const cont = document.getElementById('visibility-cats');
+  const cats = activeChallenge.categories || [];
+  cont.innerHTML = `
+    <div class="flex items-center justify-between mb-1 mt-1">
+      <span class="text-sm">Show weight stats</span>
+      <input type="checkbox" id="vis-weight" ${visibility.showWeight ? 'checked' : ''}>
+    </div>
+    <div class="flex items-center justify-between mb-1">
+      <span class="text-sm">Show calorie stats</span>
+      <input type="checkbox" id="vis-cals" ${visibility.showCalories ? 'checked' : ''}>
+    </div>
+    <div class="flex items-center justify-between mb-1">
+      <span class="text-sm">Show workout history</span>
+      <input type="checkbox" id="vis-workouts" ${visibility.showWorkouts ? 'checked' : ''}>
+    </div>
+  `;
+  updateObfToggleVisual(document.getElementById('obfuscate-toggle').checked);
+}
+
+function updateObfToggleVisual(v) {
+  const vis = document.getElementById('obf-toggle-vis');
+  const dot = document.getElementById('obf-toggle-dot');
+  if (vis) vis.style.background = v ? 'var(--wii-blue)' : 'var(--wii-gray)';
+  if (dot) dot.style.left = v ? '22px' : '2px';
+}
+
+document.getElementById('obfuscate-toggle').addEventListener('change', function() { updateObfToggleVisual(this.checked); });
+
+async function saveVisibility() {
+  const { doc, setDoc } = firebase;
+  const obf = document.getElementById('obfuscate-toggle').checked;
+  const showW = document.getElementById('vis-weight')?.checked ?? true;
+  const showC = document.getElementById('vis-cals')?.checked ?? true;
+  const showWk = document.getElementById('vis-workouts')?.checked ?? true;
+  visibility = { obfuscateFinalWeek: obf, showWeight: showW, showCalories: showC, showWorkouts: showWk };
+  await setDoc(doc(db, 'meta', 'visibility'), visibility);
+  alert('Visibility settings saved!');
+}
+
+function renderAdmin() {
+  if (!currentProfile?.isAdmin) { document.getElementById('page-admin').innerHTML = '<div class="page active" id="page-admin"><div class="card text-center"><p class="text-sm text-gray">Admin access only.</p></div></div>'; return; }
+}
+
+// ============================================================
+// LOGGING
+// ============================================================
+function setTodayDate() { document.getElementById('log-date').value = getTodayStr(); }
+
+function switchLogTab(tab) {
+  ['workout','diet','weight','calories'].forEach(t => {
+    document.getElementById('log-' + t).classList.toggle('hidden', t !== tab);
+    const btn = document.getElementById('ltab-' + t);
+    if (btn) { btn.className = t === tab ? 'btn btn-blue btn-sm' : 'btn btn-gray btn-sm'; }
+  });
+  if (tab === 'diet' && currentProfile) {
+    const p = challengeParticipants[currentProfile.id];
+    const cats = activeChallenge?.categories || [];
+    const dietCat = cats.find(c => c.name.toLowerCase().includes('diet'));
+    document.getElementById('user-diet-goal-display').textContent = p?.goals?.[dietCat?.name] ? `Your goal: ${p.goals[dietCat.name]}` : 'Your personal diet goal';
+  }
+}
+
+function selectExerciseType(type) {
+  selectedExerciseType = type;
+  document.querySelectorAll('[id^="etype-"]').forEach(b => b.className = 'btn btn-gray btn-sm');
+  if (['Lift','Run'].includes(type)) {
+    const btn = document.getElementById('etype-' + type);
+    if (btn) btn.className = 'btn btn-blue btn-sm';
+  }
+  const input = document.getElementById('exercise-custom');
+  if (!['Lift','Run'].includes(type)) input.value = type;
+  renderCustomSuggestions(type);
+}
+
+function renderCustomSuggestions(filter) {
+  const cont = document.getElementById('custom-exercise-suggestions');
+  cont.innerHTML = '';
+  customExercises.filter(e => !filter || e.toLowerCase().includes(filter.toLowerCase())).forEach(ex => {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-gray btn-sm';
+    btn.textContent = ex;
+    btn.onclick = () => selectExerciseType(ex);
+    cont.appendChild(btn);
+  });
+}
+
+async function saveWorkout() {
+  if (!currentProfile || !activeChallenge) return;
+  if (!selectedExerciseType && !document.getElementById('exercise-custom').value.trim()) return alert('Select or type an exercise type.');
+  const type = selectedExerciseType || document.getElementById('exercise-custom').value.trim();
+  const date = document.getElementById('log-date').value || getTodayStr();
+  const notes = document.getElementById('workout-notes').value.trim();
+  const calsBurned = parseFloat(document.getElementById('workout-cals-burned').value) || 0;
+
+  if (!allLogs[currentProfile.id]) allLogs[currentProfile.id] = {};
+  if (!allLogs[currentProfile.id][date]) allLogs[currentProfile.id][date] = {};
+
+  const existing = allLogs[currentProfile.id][date].workouts || [];
+  existing.push({ type, notes, calsBurned, ts: Date.now() });
+  allLogs[currentProfile.id][date].workouts = existing;
+  allLogs[currentProfile.id][date].workoutLogged = true;
+
+  const { doc, setDoc } = firebase;
+  await setDoc(doc(db, 'challenges', activeChallenge.id, 'logs', currentProfile.id, 'entries', date), allLogs[currentProfile.id][date], { merge: true });
+
+  // Save custom exercise
+  if (!['Lift','Run'].includes(type) && !customExercises.includes(type)) {
+    customExercises.push(type);
+    await setDoc(doc(db, 'meta', 'customExercises'), { list: customExercises });
+  }
+
+  document.getElementById('workout-notes').value = '';
+  document.getElementById('workout-cals-burned').value = '';
+  document.getElementById('exercise-custom').value = '';
+  selectedExerciseType = '';
+  document.querySelectorAll('[id^="etype-"]').forEach(b => b.className = 'btn btn-gray btn-sm');
+  alert(`Workout logged for ${fmtDate(date)}! 💪`);
+  renderHome();
+}
+
+function setDietYN(v) {
+  dietYN = v;
+  document.getElementById('diet-yes').classList.toggle('active', v === true);
+  document.getElementById('diet-no').classList.toggle('active', v === false);
+}
+
+async function saveDiet() {
+  if (!currentProfile || !activeChallenge || dietYN === null) return alert('Please select Yes or No.');
+  const date = document.getElementById('log-date').value || getTodayStr();
+  if (!allLogs[currentProfile.id]) allLogs[currentProfile.id] = {};
+  if (!allLogs[currentProfile.id][date]) allLogs[currentProfile.id][date] = {};
+  allLogs[currentProfile.id][date].dietMet = dietYN;
+
+  const { doc, setDoc } = firebase;
+  await setDoc(doc(db, 'challenges', activeChallenge.id, 'logs', currentProfile.id, 'entries', date), allLogs[currentProfile.id][date], { merge: true });
+  alert(`Diet log saved for ${fmtDate(date)}!`);
+  dietYN = null;
+  document.getElementById('diet-yes').classList.remove('active');
+  document.getElementById('diet-no').classList.remove('active');
+  renderHome();
+}
+
+async function saveWeight() {
+  if (!currentProfile || !activeChallenge) return;
+  const w = parseFloat(document.getElementById('weight-input').value);
+  if (!w) return alert('Enter a valid weight.');
+  const date = document.getElementById('log-date').value || getTodayStr();
+  if (!allLogs[currentProfile.id]) allLogs[currentProfile.id] = {};
+  if (!allLogs[currentProfile.id][date]) allLogs[currentProfile.id][date] = {};
+  allLogs[currentProfile.id][date].weight = w;
+
+  const { doc, setDoc } = firebase;
+  await setDoc(doc(db, 'challenges', activeChallenge.id, 'logs', currentProfile.id, 'entries', date), allLogs[currentProfile.id][date], { merge: true });
+  document.getElementById('weight-input').value = '';
+  alert(`Weight ${w} lbs logged for ${fmtDate(date)}! ⚖️`);
+  calcBMI();
+  renderHome();
+  if (currentPage === 'progress') renderProgress();
+}
+
+function setWaterYN(v) {
+  waterYN = v;
+  document.getElementById('water-yes').classList.toggle('active', v === true);
+  document.getElementById('water-no').classList.toggle('active', v === false);
+}
+
+async function saveCalories() {
+  if (!currentProfile || !activeChallenge) return;
+  const consumed = parseFloat(document.getElementById('cals-consumed').value) || 0;
+  const burned = parseFloat(document.getElementById('cals-burned').value) || 0;
+  const date = document.getElementById('log-date').value || getTodayStr();
+  if (!allLogs[currentProfile.id]) allLogs[currentProfile.id] = {};
+  if (!allLogs[currentProfile.id][date]) allLogs[currentProfile.id][date] = {};
+  allLogs[currentProfile.id][date].calsConsumed = consumed;
+  allLogs[currentProfile.id][date].calsBurned = burned;
+  allLogs[currentProfile.id][date].drankWater = waterYN;
+
+  const { doc, setDoc } = firebase;
+  await setDoc(doc(db, 'challenges', activeChallenge.id, 'logs', currentProfile.id, 'entries', date), allLogs[currentProfile.id][date], { merge: true });
+  document.getElementById('cals-consumed').value = '';
+  document.getElementById('cals-burned').value = '';
+  waterYN = null;
+  document.getElementById('water-yes').classList.remove('active');
+  document.getElementById('water-no').classList.remove('active');
+  alert('Calories logged! 🔥');
+}
+
+function calcBMI() {
+  const p = allProfiles[currentProfile?.id] || {};
+  const ft = parseFloat(document.getElementById('height-ft').value) || p.heightFt || 0;
+  const inch = parseFloat(document.getElementById('height-in').value) || p.heightIn || 0;
+  const w = parseFloat(document.getElementById('weight-input').value) || getLatestWeight(currentProfile?.id) || 0;
+  if (!ft && !inch || !w) return;
+  const totalIn = ft * 12 + inch;
+  const bmi = (w / (totalIn * totalIn)) * 703;
+  const pct = Math.min(Math.max((bmi - 10) / 30, 0), 1);
+  const needle = document.getElementById('bmi-needle');
+  if (needle) needle.style.left = (pct * 100) + '%';
+  const res = document.getElementById('bmi-result');
+  if (res) {
+    let cat = bmi < 18.5 ? 'Underweight' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Overweight' : 'Obese';
+    res.innerHTML = `<strong>BMI: ${bmi.toFixed(1)}</strong> <span class="pill ${bmi < 25 ? 'pill-green' : 'pill-red'}">${cat}</span>`;
+  }
+}
+
+// ============================================================
+// POINTS CALCULATION
+// ============================================================
+function calcPoints(uid) {
+  if (!activeChallenge || !challengeParticipants[uid]) return 0;
+  const logs = allLogs[uid] || {};
+  const cats = activeChallenge.categories || [];
+  let total = 0;
+
+  const today = getTodayStr();
+  const isObfuscated = shouldObfuscate();
+  const obfCutoff = getObfCutoff();
+
+  Object.entries(logs).forEach(([date, log]) => {
+    if (isObfuscated && date >= obfCutoff) return;
+    cats.forEach(cat => {
+      const catName = cat.name.toLowerCase();
+      if (catName.includes('workout') || catName.includes('exercise') || catName.includes('gym') || catName.includes('fitness')) {
+        if (log.workoutLogged) total += cat.points;
+      } else if (catName.includes('diet') || catName.includes('nutrition') || catName.includes('calorie')) {
+        if (log.dietMet === true) total += cat.points;
+      } else if (catName.includes('pound') || catName.includes('lbs') || catName.includes('weight') || catName.includes('loss')) {
+        // handled separately below
+      } else {
+        // generic daily goal — workout takes precedence
+        if (log.workoutLogged) total += cat.points;
+      }
+    });
+  });
+
+  // Pounds lost
+  cats.forEach(cat => {
+    if (cat.name.toLowerCase().includes('pound') || cat.name.toLowerCase().includes('lbs') || cat.name.toLowerCase().includes('loss')) {
+      const participant = challengeParticipants[uid];
+      const startW = participant?.startingWeight || 0;
+      const latestW = getLatestWeight(uid);
+      if (startW && latestW) {
+        const lost = startW - latestW;
+        total += +(lost * cat.points).toFixed(1);
+      }
+    }
+  });
+
+  return Math.max(0, Math.round(total * 10) / 10);
+}
+
+function getLatestWeight(uid) {
+  const logs = allLogs[uid] || {};
+  const dates = Object.keys(logs).filter(d => logs[d].weight).sort();
+  if (!dates.length) return null;
+  return logs[dates[dates.length - 1]].weight;
+}
+
+function shouldObfuscate() {
+  if (!visibility.obfuscateFinalWeek || !activeChallenge) return false;
+  if (currentProfile?.isAdmin) return false;
+  const today = getTodayStr();
+  const obfCutoff = getObfCutoff();
+  return today >= obfCutoff && today <= activeChallenge.endDate;
+}
+
+function getObfCutoff() {
+  if (!activeChallenge) return '9999-99-99';
+  const end = new Date(activeChallenge.endDate + 'T00:00:00');
+  end.setDate(end.getDate() - 6);
+  return end.toISOString().split('T')[0];
+}
+
+function isChallengeOver() {
+  if (!activeChallenge) return false;
+  return getTodayStr() > activeChallenge.endDate;
+}
+
+// ============================================================
+// LEADERBOARD
+// ============================================================
+function renderLeaderboard() {
+  if (!activeChallenge) { document.getElementById('leaderboard-list').innerHTML = '<div class="card text-center"><p class="text-sm text-gray">No active challenge.</p></div>'; return; }
+
+  const obf = shouldObfuscate();
+  document.getElementById('lb-obfuscated-banner').classList.toggle('hidden', !obf);
+
+  const isAdmin = currentProfile?.isAdmin;
+  const over = isChallengeOver();
+  document.getElementById('lb-reveal-btn-wrap').classList.toggle('hidden', !(isAdmin && over));
+
+  // Build leaderboard
+  const entries = Object.entries(challengeParticipants).map(([uid, p]) => {
+    const pts = calcPoints(uid);
+    const startW = p.startingWeight || 0;
+    const latestW = getLatestWeight(uid) || startW;
+    const lbsLost = startW ? +(startW - latestW).toFixed(1) : 0;
+    return { uid, ...p, pts, lbsLost };
+  }).sort((a, b) => b.pts - a.pts);
+
+  const list = document.getElementById('leaderboard-list');
+  list.innerHTML = '';
+  entries.forEach((e, i) => {
+    const profile = allProfiles[e.uid] || {};
+    const rankClass = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : 'rank-other';
+    const rankLabel = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+    const avatar = profile.avatar ? `<img src="${profile.avatar}" class="lb-avatar">` : `<div class="lb-avatar" style="background:var(--wii-gray);display:flex;align-items:center;justify-content:center;">${stickFigureSVG(24)}</div>`;
+    const goalText = Object.values(e.goals || {}).join(' · ') || '';
+
+    const div = document.createElement('div');
+    div.className = `leaderboard-item ${rankClass}`;
+    const ptsDisplay = obf && !isAdmin ? `<div class="lb-points" style="filter:blur(4px);">??</div>` : `<div><div class="lb-points">${e.pts}</div><div class="lb-points-label">pts</div></div>`;
+    div.innerHTML = `
+      <div class="rank-badge">${rankLabel}</div>
+      ${avatar}
+      <div style="flex:1;min-width:0;">
+        <div class="lb-name">${e.name || profile.name}</div>
+        <div class="lb-goal">${goalText}</div>
+        ${visibility.showWeight && !obf ? `<div class="text-sm text-gray">-${Math.max(0, e.lbsLost)} lbs</div>` : ''}
+      </div>
+      ${ptsDisplay}
+    `;
+    list.appendChild(div);
+  });
+
+  renderProgressChart(entries);
+  renderChartToggleBtns(entries);
+}
+
+function renderChartToggleBtns(entries) {
+  const cont = document.getElementById('chart-toggle-btns');
+  cont.innerHTML = '';
+  entries.forEach((e, i) => {
+    if (!(e.uid in chartToggles)) chartToggles[e.uid] = true;
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-sm ' + (chartToggles[e.uid] ? 'btn-blue' : 'btn-gray');
+    btn.textContent = e.name || allProfiles[e.uid]?.name || 'User';
+    btn.onclick = () => { chartToggles[e.uid] = !chartToggles[e.uid]; renderLeaderboard(); };
+    cont.appendChild(btn);
+  });
+}
+
+const CHART_COLORS = ['#009ac7','#e8394a','#5cb85c','#f5a623','#9b59b6','#1abc9c','#e67e22','#e74c3c','#3498db','#2ecc71'];
+
+function renderProgressChart(entries) {
+  const ctx = document.getElementById('progress-chart');
+  if (!ctx) return;
+  if (progressChartInst) { progressChartInst.destroy(); progressChartInst = null; }
+  if (!activeChallenge) return;
+
+  const start = new Date(activeChallenge.startDate + 'T00:00:00');
+  const today = new Date();
+  const labels = [];
+  const d = new Date(start);
+  while (d <= today) { labels.push(d.toISOString().split('T')[0]); d.setDate(d.getDate() + 1); }
+
+  const datasets = entries.filter(e => chartToggles[e.uid]).map((e, i) => {
+    let runningPts = 0;
+    const data = labels.map(date => {
+      const log = (allLogs[e.uid] || {})[date] || {};
+      const obfCutoff = getObfCutoff();
+      if (shouldObfuscate() && date >= obfCutoff) return null;
+      (activeChallenge.categories || []).forEach(cat => {
+        const catName = cat.name.toLowerCase();
+        if ((catName.includes('workout') || catName.includes('exercise')) && log.workoutLogged) runningPts += cat.points;
+        else if (catName.includes('diet') && log.dietMet === true) runningPts += cat.points;
+      });
+      return runningPts;
+    });
+    return { label: e.name || allProfiles[e.uid]?.name, data, borderColor: CHART_COLORS[i % CHART_COLORS.length], backgroundColor: CHART_COLORS[i % CHART_COLORS.length] + '22', fill: false, tension: 0.3, pointRadius: 3 };
+  });
+
+  progressChartInst = new Chart(ctx, {
+    type: 'line',
+    data: { labels: labels.map(l => l.slice(5)), datasets },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { maxTicksLimit: 10, font: { family: 'Nunito', size: 10 } } }, y: { beginAtZero: true, ticks: { font: { family: 'Nunito', size: 10 } } } } }
+  });
+}
+
+// ============================================================
+// PROGRESS
+// ============================================================
+function renderProgress() {
+  if (!currentProfile || !activeChallenge || !challengeParticipants[currentProfile.id]) {
+    document.getElementById('progress-no-join').classList.remove('hidden');
+    document.getElementById('progress-content').classList.add('hidden');
+    return;
+  }
+  document.getElementById('progress-no-join').classList.add('hidden');
+  document.getElementById('progress-content').classList.remove('hidden');
+
+  const logs = allLogs[currentProfile.id] || {};
+  const participant = challengeParticipants[currentProfile.id];
+  const pts = calcPoints(currentProfile.id);
+  const startW = participant.startingWeight || 0;
+  const latestW = getLatestWeight(currentProfile.id) || startW;
+  const lbsLost = startW ? +(startW - latestW).toFixed(1) : 0;
+  const workoutDays = Object.values(logs).filter(l => l.workoutLogged).length;
+  const dietDays = Object.values(logs).filter(l => l.dietMet === true).length;
+
+  document.getElementById('progress-stat-grid').innerHTML = `
+    <div class="stat-box"><div class="stat-value">${pts}</div><div class="stat-label">Total Points</div></div>
+    <div class="stat-box"><div class="stat-value">${Math.max(0, lbsLost)}</div><div class="stat-label">Lbs Lost</div></div>
+    <div class="stat-box"><div class="stat-value">${workoutDays}</div><div class="stat-label">Workout Days</div></div>
+    <div class="stat-box"><div class="stat-value">${dietDays}</div><div class="stat-label">Diet Days ✅</div></div>
+    <div class="stat-box"><div class="stat-value">${startW || '—'}</div><div class="stat-label">Starting Weight</div></div>
+    <div class="stat-box"><div class="stat-value">${latestW || '—'}</div><div class="stat-label">Current Weight</div></div>
+  `;
+
+  // Weight history
+  const weightEntries = Object.entries(logs).filter(([_, l]) => l.weight).sort(([a], [b]) => a.localeCompare(b));
+  const wList = document.getElementById('weight-history-list');
+  wList.innerHTML = weightEntries.length ? weightEntries.map(([date, l]) => `<div class="log-item"><span class="log-date">${fmtDate(date)}</span><span class="log-detail">${l.weight} lbs</span></div>`).join('') : '<p class="text-sm text-gray text-center">No weight logs yet.</p>';
+
+  // Weight chart
+  const wCtx = document.getElementById('weight-chart');
+  if (weightChartInst) { weightChartInst.destroy(); weightChartInst = null; }
+  if (weightEntries.length > 1) {
+    weightChartInst = new Chart(wCtx, {
+      type: 'line',
+      data: { labels: weightEntries.map(([d]) => d.slice(5)), datasets: [{ label: 'Weight (lbs)', data: weightEntries.map(([_, l]) => l.weight), borderColor: '#009ac7', backgroundColor: '#009ac722', fill: true, tension: 0.3 }] },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { ticks: { font: { family: 'Nunito', size: 10 } } }, y: { ticks: { font: { family: 'Nunito', size: 10 } } } } }
+    });
+  }
+
+  // Workout history
+  const wkList = document.getElementById('workout-history-list');
+  const wkEntries = [];
+  Object.entries(logs).sort(([a],[b])=>b.localeCompare(a)).forEach(([date, l]) => {
+    (l.workouts || []).forEach(w => { wkEntries.push({ date, ...w }); });
+  });
+  wkList.innerHTML = wkEntries.length ? wkEntries.map(w => `<div class="log-item"><span class="log-date">${fmtDate(w.date)}</span><span class="log-detail">${w.type}${w.notes ? ' — ' + w.notes : ''}${w.calsBurned ? ` 🔥${w.calsBurned} cal` : ''}</span></div>`).join('') : '<p class="text-sm text-gray text-center">No workouts logged yet.</p>';
+
+  // Weekly summary
+  renderWeeklySummary(logs);
+}
+
+function renderWeeklySummary(logs) {
+  const cont = document.getElementById('weekly-summary');
+  const today = new Date();
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() - today.getDay());
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    days.push(d.toISOString().split('T')[0]);
+  }
+  let html = '';
+  let wkWorkouts = 0, wkDiet = 0, wkCals = 0;
+  days.forEach(date => {
+    const log = logs[date] || {};
+    if (log.workoutLogged) wkWorkouts++;
+    if (log.dietMet) wkDiet++;
+    if (log.calsConsumed) wkCals += log.calsConsumed;
+  });
+  html = `<div class="stat-grid"><div class="stat-box"><div class="stat-value">${wkWorkouts}</div><div class="stat-label">Workouts This Week</div></div><div class="stat-box"><div class="stat-value">${wkDiet}/7</div><div class="stat-label">Diet Days</div></div><div class="stat-box"><div class="stat-value">${wkCals}</div><div class="stat-label">Total Cals In</div></div></div>`;
+  html += `<div style="margin-top:0.75rem;"><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:0.7rem;">`;
+  days.forEach(date => {
+    const log = logs[date] || {};
+    const dow = new Date(date + 'T12:00:00').toLocaleDateString('en-US',{weekday:'short'}).slice(0,1);
+    const color = log.workoutLogged ? '#5cb85c' : '#e0e0e0';
+    html += `<div><div style="width:100%;aspect-ratio:1;background:${color};border-radius:6px;margin:0 auto 2px;"></div><div>${dow}</div></div>`;
+  });
+  html += '</div></div>';
+  cont.innerHTML = html;
+}
+
+// ============================================================
+// HISTORY
+// ============================================================
+async function renderHistory() {
+  const { collection, getDocs } = firebase;
+  const snap = await getDocs(collection(db, 'archive'));
+  const cont = document.getElementById('archive-list');
+  if (snap.empty) { cont.innerHTML = '<div class="card text-center"><p class="text-sm text-gray">No archived challenges yet.</p></div>'; return; }
+  cont.innerHTML = '';
+  snap.forEach(d => {
+    const ch = d.data();
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = `<div class="card-title">${ch.name}</div><div class="text-sm text-gray">${fmtDate(ch.startDate)} – ${fmtDate(ch.endDate)}</div><div class="text-sm mt-1">Participants: ${Object.keys(ch.participants || {}).length}</div>`;
+    cont.appendChild(div);
+  });
+}
+
+// ============================================================
+// REVEAL WINNER
+// ============================================================
+function triggerReveal() {
+  if (!activeChallenge) return;
+  const entries = Object.entries(challengeParticipants).map(([uid, p]) => {
+    // Use unobfuscated points for reveal
+    const savedObf = visibility.obfuscateFinalWeek;
+    visibility.obfuscateFinalWeek = false;
+    const pts = calcPoints(uid);
+    visibility.obfuscateFinalWeek = savedObf;
+    return { uid, name: p.name || allProfiles[uid]?.name || 'Unknown', pts };
+  }).sort((a, b) => b.pts - a.pts);
+
+  const winner = entries[0];
+  document.getElementById('reveal-name').textContent = winner.name;
+  document.getElementById('reveal-points').textContent = `${winner.pts} Points`;
+  document.getElementById('reveal-summary').innerHTML = entries.map((e, i) => `${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '  '} ${e.name}: ${e.pts} pts`).join('<br>');
+  spawnConfetti();
+  document.getElementById('reveal-overlay').classList.add('active');
+}
+
+function closeReveal() { document.getElementById('reveal-overlay').classList.remove('active'); }
+
+function spawnConfetti() {
+  const cont = document.getElementById('confetti-container');
+  cont.innerHTML = '';
+  const colors = ['#f7d000','#009ac7','#e8394a','#5cb85c','#f5a623','#9b59b6'];
+  for (let i = 0; i < 40; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.cssText = `left:${Math.random()*100}%;top:-10px;background:${colors[i%colors.length]};border-radius:${Math.random()>0.5?'50%':'2px'};animation-delay:${Math.random()*3}s;animation-duration:${2+Math.random()*2}s;transform:rotate(${Math.random()*360}deg);`;
+    cont.appendChild(el);
+  }
+}
+
+// ============================================================
+// MODALS
+// ============================================================
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('active'); });
+});
+
+// ============================================================
+// UTILS
+// ============================================================
+function getTodayStr() { return new Date().toISOString().split('T')[0]; }
+function fmtDate(str) {
+  if (!str) return '';
+  const d = new Date(str + 'T12:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function stickFigureSVG(size) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="5" r="2.5" stroke="#888" stroke-width="1.5"/>
+    <line x1="12" y1="7.5" x2="12" y2="15" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="12" y1="10" x2="8" y2="13" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="12" y1="10" x2="16" y2="13" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="12" y1="15" x2="9" y2="20" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="12" y1="15" x2="15" y2="20" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+  </svg>`;
+}
+</script>
+</body>
+</html>
